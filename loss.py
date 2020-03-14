@@ -6,13 +6,16 @@ import math
 import torch.nn.functional as F
 import pdb
 
+
 def Entropy(input_):
     bs = input_.size(0)
     epsilon = 1e-5
     entropy = -input_ * torch.log(input_ + epsilon)
     entropy = torch.sum(entropy, dim=1)
-    return entropy 
+    return entropy
 
+
+# 这个class和uda-digit里面的CrossEntropyLabelSmooth是一样的，重复了
 class CrossEntropyLabelSmooth(nn.Module):
     """Cross entropy loss with label smoothing regularizer.
     Reference:

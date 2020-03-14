@@ -16,12 +16,16 @@ from scipy.spatial.distance import cdist
 import pickle
 from usps import *
 
+
+# 这个函数在loss.py里面也有
 def Entropy(input_):
     bs = input_.size(0)
     entropy = -input_ * torch.log(input_ + 1e-5)
     entropy = torch.sum(entropy, dim=1)
-    return entropy 
+    return entropy
 
+
+# 这里是论文里面stage1那里使用的新的交叉熵函数，这个东西在loss.py里面也有
 class CrossEntropyLabelSmooth(nn.Module):
     def __init__(self, num_classes, epsilon=0.1, use_gpu=True, size_average=True):
         super(CrossEntropyLabelSmooth, self).__init__()
@@ -42,93 +46,95 @@ class CrossEntropyLabelSmooth(nn.Module):
             loss = (- targets * log_probs).sum(1)
         return loss
 
-def digit_load(args): 
+
+def digit_load(args):
     train_bs = args.batch_size
     if args.dset == 's2m':
         train_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='train', download=True,
-                transform=transforms.Compose([
-                    transforms.Resize(32),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]))
+                                                 transform=transforms.Compose([
+                                                     transforms.Resize(32),
+                                                     transforms.ToTensor(),
+                                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                                 ]))
         test_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='test', download=True,
-                transform=transforms.Compose([
-                    transforms.Resize(32),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]))  
+                                                transform=transforms.Compose([
+                                                    transforms.Resize(32),
+                                                    transforms.ToTensor(),
+                                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                                ]))
         train_target = torchvision.datasets.MNIST('./data/digit/mnist/', train=True, download=True,
-                transform=transforms.Compose([
-                    transforms.Resize(32),
-                    transforms.Lambda(lambda x: x.convert("RGB")),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]))      
+                                                  transform=transforms.Compose([
+                                                      transforms.Resize(32),
+                                                      transforms.Lambda(lambda x: x.convert("RGB")),
+                                                      transforms.ToTensor(),
+                                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                                  ]))
         test_target = torchvision.datasets.MNIST('./data/digit/mnist/', train=False, download=True,
-                transform=transforms.Compose([
-                    transforms.Resize(32),
-                    transforms.Lambda(lambda x: x.convert("RGB")),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ]))
+                                                 transform=transforms.Compose([
+                                                     transforms.Resize(32),
+                                                     transforms.Lambda(lambda x: x.convert("RGB")),
+                                                     transforms.ToTensor(),
+                                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                                 ]))
     elif args.dset == 'u2m':
         train_source = USPS('./data/digit/usps/', train=True, download=True,
-                transform=transforms.Compose([
-                    transforms.RandomCrop(28, padding=4),
-                    transforms.RandomRotation(10),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                            transform=transforms.Compose([
+                                transforms.RandomCrop(28, padding=4),
+                                transforms.RandomRotation(10),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5,), (0.5,))
+                            ]))
         test_source = USPS('./data/digit/usps/', train=False, download=True,
-                transform=transforms.Compose([
-                    transforms.RandomCrop(28, padding=4),
-                    transforms.RandomRotation(10),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))    
+                           transform=transforms.Compose([
+                               transforms.RandomCrop(28, padding=4),
+                               transforms.RandomRotation(10),
+                               transforms.ToTensor(),
+                               transforms.Normalize((0.5,), (0.5,))
+                           ]))
         train_target = torchvision.datasets.MNIST('./data/digit/mnist/', train=True, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))    
+                                                  transform=transforms.Compose([
+                                                      transforms.ToTensor(),
+                                                      transforms.Normalize((0.5,), (0.5,))
+                                                  ]))
         test_target = torchvision.datasets.MNIST('./data/digit/mnist/', train=False, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                                                 transform=transforms.Compose([
+                                                     transforms.ToTensor(),
+                                                     transforms.Normalize((0.5,), (0.5,))
+                                                 ]))
     elif args.dset == 'm2u':
         train_source = torchvision.datasets.MNIST('./data/digit/mnist/', train=True, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                                                  transform=transforms.Compose([
+                                                      transforms.ToTensor(),
+                                                      transforms.Normalize((0.5,), (0.5,))
+                                                  ]))
         test_source = torchvision.datasets.MNIST('./data/digit/mnist/', train=False, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                                                 transform=transforms.Compose([
+                                                     transforms.ToTensor(),
+                                                     transforms.Normalize((0.5,), (0.5,))
+                                                 ]))
 
         train_target = USPS('./data/digit/usps/', train=True, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                            transform=transforms.Compose([
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5,), (0.5,))
+                            ]))
         test_target = USPS('./data/digit/usps/', train=False, download=True,
-                transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5,), (0.5,))
-                ]))
+                           transform=transforms.Compose([
+                               transforms.ToTensor(),
+                               transforms.Normalize((0.5,), (0.5,))
+                           ]))
 
     dset_loaders = {}
-    dset_loaders["source_tr"] = DataLoader(train_source, batch_size=train_bs, shuffle=True, 
-        num_workers=args.worker, drop_last=False)
-    dset_loaders["source_te"] = DataLoader(test_source, batch_size=train_bs*2, shuffle=True, 
-        num_workers=args.worker, drop_last=False)
-    dset_loaders["target"] = DataLoader(train_target, batch_size=train_bs, shuffle=True, 
-        num_workers=args.worker, drop_last=False)
-    dset_loaders["test"] = DataLoader(test_target, batch_size=train_bs*2, shuffle=True, 
-        num_workers=args.worker, drop_last=False)
+    dset_loaders["source_tr"] = DataLoader(train_source, batch_size=train_bs, shuffle=True,
+                                           num_workers=args.worker, drop_last=False)
+    dset_loaders["source_te"] = DataLoader(test_source, batch_size=train_bs * 2, shuffle=True,
+                                           num_workers=args.worker, drop_last=False)
+    dset_loaders["target"] = DataLoader(train_target, batch_size=train_bs, shuffle=True,
+                                        num_workers=args.worker, drop_last=False)
+    dset_loaders["test"] = DataLoader(test_target, batch_size=train_bs * 2, shuffle=True,
+                                      num_workers=args.worker, drop_last=False)
     return dset_loaders
+
 
 def cal_acc(loader, netF, netB, netC):
     start_test = True
@@ -152,17 +158,19 @@ def cal_acc(loader, netF, netB, netC):
     mean_ent = torch.mean(Entropy(nn.Softmax(dim=1)(all_output))).cpu().data.item()
     return accuracy, mean_ent
 
+
 def train_source(args):
     dset_loaders = digit_load(args)
     ## set base network
     if args.dset == 'u2m':
         netF = network.LeNetBase().cuda()
     elif args.dset == 'm2u':
-        netF = network.LeNetBase().cuda()  
+        netF = network.LeNetBase().cuda()
     elif args.dset == 's2m':
         netF = network.DTNBase().cuda()
-    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features, bottleneck_dim=args.bottleneck).cuda()
-    netC = network.feat_classifier(type=args.layer, class_num = args.class_num, bottleneck_dim=args.bottleneck).cuda()
+    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features,
+                                   bottleneck_dim=args.bottleneck).cuda()
+    netC = network.feat_classifier(type=args.layer, class_num=args.class_num, bottleneck_dim=args.bottleneck).cuda()
 
     param_group = []
     learning_rate = args.lr
@@ -171,7 +179,7 @@ def train_source(args):
     for k, v in netB.named_parameters():
         param_group += [{'params': v, 'lr': learning_rate}]
     for k, v in netC.named_parameters():
-        param_group += [{'params': v, 'lr': learning_rate}]   
+        param_group += [{'params': v, 'lr': learning_rate}]
     optimizer = optim.SGD(param_group, momentum=0.9, weight_decay=5e-4, nesterov=True)
 
     acc_init = 0
@@ -186,7 +194,8 @@ def train_source(args):
                 continue
             inputs_source, labels_source = inputs_source.cuda(), labels_source.cuda()
             outputs_source = netC(netB(netF(inputs_source)))
-            classifier_loss = CrossEntropyLabelSmooth(num_classes=args.class_num, epsilon=args.smooth)(outputs_source, labels_source)            
+            classifier_loss = CrossEntropyLabelSmooth(num_classes=args.class_num, epsilon=args.smooth)(outputs_source,
+                                                                                                       labels_source)
             optimizer.zero_grad()
             classifier_loss.backward()
             optimizer.step()
@@ -196,10 +205,11 @@ def train_source(args):
         netC.eval()
         acc_s_tr, _ = cal_acc(dset_loaders['source_tr'], netF, netB, netC)
         acc_s_te, _ = cal_acc(dset_loaders['source_te'], netF, netB, netC)
-        log_str = 'Task: {}, Iter:{}/{}; Accuracy = {:.2f}%/ {:.2f}%'.format(args.dset, epoch+1, args.max_epoch, acc_s_tr*100, acc_s_te*100)
+        log_str = 'Task: {}, Iter:{}/{}; Accuracy = {:.2f}%/ {:.2f}%'.format(args.dset, epoch + 1, args.max_epoch,
+                                                                             acc_s_tr * 100, acc_s_te * 100)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
-        print(log_str+'\n')
+        print(log_str + '\n')
 
         if acc_s_te >= acc_init:
             acc_init = acc_s_te
@@ -213,34 +223,37 @@ def train_source(args):
 
     return netF, netB, netC
 
+
 def test_target(args):
     dset_loaders = digit_load(args)
     ## set base network
     if args.dset == 'u2m':
         netF = network.LeNetBase().cuda()
     elif args.dset == 'm2u':
-        netF = network.LeNetBase().cuda()  
+        netF = network.LeNetBase().cuda()
     elif args.dset == 's2m':
         netF = network.DTNBase().cuda()
 
-    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features, bottleneck_dim=args.bottleneck).cuda()
-    netC = network.feat_classifier(type=args.layer, class_num = args.class_num, bottleneck_dim=args.bottleneck).cuda()
+    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features,
+                                   bottleneck_dim=args.bottleneck).cuda()
+    netC = network.feat_classifier(type=args.layer, class_num=args.class_num, bottleneck_dim=args.bottleneck).cuda()
 
-    args.modelpath = args.output_dir + '/source_F_val.pt'   
+    args.modelpath = args.output_dir + '/source_F_val.pt'
     netF.load_state_dict(torch.load(args.modelpath))
-    args.modelpath = args.output_dir + '/source_B_val.pt'   
+    args.modelpath = args.output_dir + '/source_B_val.pt'
     netB.load_state_dict(torch.load(args.modelpath))
-    args.modelpath = args.output_dir + '/source_C_val.pt'   
+    args.modelpath = args.output_dir + '/source_C_val.pt'
     netC.load_state_dict(torch.load(args.modelpath))
     netF.eval()
     netB.eval()
     netC.eval()
 
     acc, _ = cal_acc(dset_loaders['test'], netF, netB, netC)
-    log_str = 'Task: {}, Accuracy = {:.2f}%'.format(args.dset, acc*100)
+    log_str = 'Task: {}, Accuracy = {:.2f}%'.format(args.dset, acc * 100)
     args.out_file.write(log_str + '\n')
     args.out_file.flush()
-    print(log_str+'\n')
+    print(log_str + '\n')
+
 
 def print_args(args):
     s = "==========================================\n"
@@ -248,24 +261,26 @@ def print_args(args):
         s += "{}:{}\n".format(arg, content)
     return s
 
+
 def train_target(args):
     dset_loaders = digit_load(args)
     ## set base network
     if args.dset == 'u2m':
         netF = network.LeNetBase().cuda()
     elif args.dset == 'm2u':
-        netF = network.LeNetBase().cuda()  
+        netF = network.LeNetBase().cuda()
     elif args.dset == 's2m':
         netF = network.DTNBase().cuda()
 
-    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features, bottleneck_dim=args.bottleneck).cuda()
-    netC = network.feat_classifier(type=args.layer, class_num = args.class_num, bottleneck_dim=args.bottleneck).cuda()
+    netB = network.feat_bootleneck(type=args.classifier, feature_dim=netF.in_features,
+                                   bottleneck_dim=args.bottleneck).cuda()
+    netC = network.feat_classifier(type=args.layer, class_num=args.class_num, bottleneck_dim=args.bottleneck).cuda()
 
-    args.modelpath = args.output_dir + '/source_F_val.pt'   
+    args.modelpath = args.output_dir + '/source_F_val.pt'
     netF.load_state_dict(torch.load(args.modelpath))
-    args.modelpath = args.output_dir + '/source_B_val.pt'   
+    args.modelpath = args.output_dir + '/source_B_val.pt'
     netB.load_state_dict(torch.load(args.modelpath))
-    args.modelpath = args.output_dir + '/source_C_val.pt'    
+    args.modelpath = args.output_dir + '/source_C_val.pt'
     netC.load_state_dict(torch.load(args.modelpath))
     netC.eval()
     for k, v in netC.named_parameters():
@@ -273,9 +288,9 @@ def train_target(args):
 
     param_group = []
     for k, v in netF.named_parameters():
-    	param_group += [{'params': v, 'lr': args.lr}]
+        param_group += [{'params': v, 'lr': args.lr}]
     for k, v in netB.named_parameters():
-    	param_group += [{'params': v, 'lr': args.lr}]
+        param_group += [{'params': v, 'lr': args.lr}]
     optimizer = optim.SGD(param_group, momentum=0.9, weight_decay=5e-4, nesterov=True)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
@@ -306,6 +321,7 @@ def train_target(args):
             im_loss = torch.mean(Entropy(softmax_out))
             msoftmax = softmax_out.mean(dim=0)
             im_loss -= torch.sum(-msoftmax * torch.log(msoftmax + 1e-5))
+            # args.par在这里用到了
             total_loss = im_loss + args.par * classifier_loss
 
             optimizer.zero_grad()
@@ -315,15 +331,16 @@ def train_target(args):
         netF.eval()
         netB.eval()
         acc, _ = cal_acc(dset_loaders['test'], netF, netB, netC)
-        log_str = 'Task: {}, Iter:{}/{}; Accuracy = {:.2f}%'.format(args.dset, epoch+1, args.max_epoch, acc*100)
+        log_str = 'Task: {}, Iter:{}/{}; Accuracy = {:.2f}%'.format(args.dset, epoch + 1, args.max_epoch, acc * 100)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
-        print(log_str+'\n')
-    
+        print(log_str + '\n')
+
     # torch.save(netF.state_dict(), osp.join(args.output_dir, "target_F.pt"))
     # torch.save(netB.state_dict(), osp.join(args.output_dir, "target_B.pt"))
     # torch.save(netC.state_dict(), osp.join(args.output_dir, "target_C.pt"))
     return netF, netB, netC
+
 
 def obtain_center(loader, netF, netB, netC, args, c=None):
     start_test = True
@@ -348,7 +365,7 @@ def obtain_center(loader, netF, netB, netC, args, c=None):
     all_output = nn.Softmax(dim=1)(all_output)
     _, predict = torch.max(all_output, 1)
     accuracy = torch.sum(torch.squeeze(predict).float() == all_label).item() / float(all_label.size()[0])
-    
+
     all_fea = torch.cat((all_fea, torch.ones(all_fea.size(0), 1)), 1)
     all_fea = (all_fea.t() / torch.norm(all_fea, p=2, dim=1)).t()
     all_fea = all_fea.float().cpu().numpy()
@@ -356,21 +373,22 @@ def obtain_center(loader, netF, netB, netC, args, c=None):
     K = all_output.size(1)
     aff = all_output.float().cpu().numpy()
     initc = aff.transpose().dot(all_fea)
-    initc = initc / (1e-8 + aff.sum(axis=0)[:,None])
+    initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
 
     dd = cdist(all_fea, initc, 'cosine')
     pred_label = dd.argmin(axis=1)
     acc = np.sum(pred_label == all_label.float().numpy()) / len(all_fea)
     aff = np.eye(K)[pred_label]
     initc = aff.transpose().dot(all_fea)
-    initc = initc / (1e-8 + aff.sum(axis=0)[:,None])
+    initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
     center = torch.from_numpy(initc).cuda()
 
-    log_str = 'Accuracy = {:.2f}% -> {:.2f}%'.format(accuracy*100, acc*100)
+    log_str = 'Accuracy = {:.2f}% -> {:.2f}%'.format(accuracy * 100, acc * 100)
     args.out_file.write(log_str + '\n')
     args.out_file.flush()
-    print(log_str+'\n')
+    print(log_str + '\n')
     return center
+
 
 def obtain_label(features_target, center):
     features_target = torch.cat((features_target, torch.ones(features_target.size(0), 1).cuda()), 1)
@@ -381,6 +399,7 @@ def obtain_label(features_target, center):
     pred = torch.from_numpy(pred).cuda()
     return pred
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Domain Adaptation')
     parser.add_argument('--gpu_id', type=str, nargs='?', default='0', help="device id to run")
@@ -389,19 +408,21 @@ if __name__ == "__main__":
     parser.add_argument('--max_epoch', type=int, default=20, help="maximum epoch")
     parser.add_argument('--batch_size', type=int, default=128, help="batch_size")
     parser.add_argument('--worker', type=int, default=4, help="number of workers")
-    parser.add_argument('--dset', type=str, default='s2m', choices=['u2m', 'm2u','s2m'])
+    parser.add_argument('--dset', type=str, default='s2m', choices=['u2m', 'm2u', 's2m'])
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
     parser.add_argument('--seed', type=int, default=2020, help="random seed")
     parser.add_argument('--par', type=float, default=0.1)
     parser.add_argument('--bottleneck', type=int, default=256)
+    # todo li 这个wn和bn是什么东西？？
     parser.add_argument('--layer', type=str, default="wn", choices=["linear", "wn"])
     parser.add_argument('--classifier', type=str, default="bn", choices=["ori", "bn"])
-    parser.add_argument('--smooth', type=float, default=0.1)   
+    parser.add_argument('--smooth', type=float, default=0.1)
     parser.add_argument('--output', type=str, default='')
     args = parser.parse_args()
     args.class_num = 10
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    # 设置随机种子
     SEED = args.seed
     torch.manual_seed(SEED)
     torch.cuda.manual_seed(SEED)
@@ -410,19 +431,23 @@ if __name__ == "__main__":
     # torch.backends.cudnn.deterministic = True
 
     current_folder = "./"
-    args.output_dir = osp.join(current_folder, args.output, 'seed'+str(args.seed), args.dset)
+    # 这个output_dir的值为'./seed2020\\s2m'
+    args.output_dir = osp.join(current_folder, args.output, 'seed' + str(args.seed), args.dset)
     if not osp.exists(args.output_dir):
         os.system('mkdir -p ' + args.output_dir)
     if not osp.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
+    # 检测训练好的源域模型是否存在
     if not osp.exists(osp.join(args.output_dir + '/source_F_val.pt')):
+        # 输出的log文件为'./seed2020\\s2m\\log_src_val.txt'
         args.out_file = open(osp.join(args.output_dir, 'log_src_val.txt'), 'w')
-        args.out_file.write(print_args(args)+'\n')
+        args.out_file.write(print_args(args) + '\n')
         args.out_file.flush()
         train_source(args)
         test_target(args)
+    # 输出的log文件为'./seed2020\\s2m\\log_tar_val_0.1.txt'
     args.out_file = open(osp.join(args.output_dir, 'log_tar_val_' + str(args.par) + '.txt'), 'w')
-    args.out_file.write(print_args(args)+'\n')
+    args.out_file.write(print_args(args) + '\n')
     args.out_file.flush()
     train_target(args)
