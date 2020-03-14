@@ -30,11 +30,14 @@ class feat_bootleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(p=0.5)
         self.bottleneck = nn.Linear(feature_dim, bottleneck_dim)
+        # 这个方法是用来进行初始化权重值的
         self.bottleneck.apply(init_weights)
         self.type = type
 
     def forward(self, x):
+        # 首先经过bootleneck的线性层Linear
         x = self.bottleneck(x)
+        # 判读是否需要进行batchNorm
         if self.type == "bn":
             x = self.bn(x)
             x = self.dropout(x)
@@ -47,6 +50,7 @@ class feat_classifier(nn.Module):
         if type == "linear":
             self.fc = nn.Linear(bottleneck_dim, class_num)
         else:
+            # 这个weightNorm就是论文里面讲解最后提到的batchNorm和WeightNorm，居然这么容易就实现了
             self.fc = weightNorm(nn.Linear(bottleneck_dim, class_num), name="weight")
         self.fc.apply(init_weights)
 
@@ -58,6 +62,7 @@ class feat_classifier(nn.Module):
 class DTNBase(nn.Module):
     def __init__(self):
         super(DTNBase, self).__init__()
+        # 这个层里面还使用了BatchNorm，Dropout，
         self.conv_params = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
             nn.BatchNorm2d(64),
@@ -72,6 +77,7 @@ class DTNBase(nn.Module):
             nn.Dropout2d(0.5),
             nn.ReLU()
         )
+        # 这个in_features是指经过这个Base之后输出的feature的大小
         self.in_features = 256 * 4 * 4
 
     def forward(self, x):
@@ -83,6 +89,7 @@ class DTNBase(nn.Module):
 class LeNetBase(nn.Module):
     def __init__(self):
         super(LeNetBase, self).__init__()
+        # 两个CONV层，同时在中间加了dropout和MaxPool
         self.conv_params = nn.Sequential(
             nn.Conv2d(1, 20, kernel_size=5),
             nn.MaxPool2d(2),
@@ -92,6 +99,7 @@ class LeNetBase(nn.Module):
             nn.MaxPool2d(2),
             nn.ReLU(),
         )
+        # 这个in_features是指经过这个Base之后输出的feature的大小
         self.in_features = 50 * 4 * 4
 
     def forward(self, x):
