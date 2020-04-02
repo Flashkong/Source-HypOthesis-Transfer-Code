@@ -327,6 +327,7 @@ def train_target(args):
         iter_test = iter(dset_loaders["target"])
 
         # 在这里还保存了源域的g模型，并且设置为测试模式
+        # 注意,这里拷贝的是上次epoch的模型,而不是源域模型不变
         prev_F = copy.deepcopy(netF)
         prev_B = copy.deepcopy(netB)
         prev_F.eval()
@@ -341,7 +342,7 @@ def train_target(args):
             inputs_test = inputs_test.cuda()
             with torch.no_grad():
                 # 注意，是每进行一个数据batch的iteration就预测label一次，
-                # 另外，无论iteration多少次，他们预测label使用的模型都是source的不变
+                # 另外，无论iteration多少次，他们预测label使用的模型都是上次epoch使用的模型
                 # 下面这两句对应论文里面的第二个公式
                 # todo li 论文里面还有第三个和第四个公式，怎么没看到在哪啊。
                 features_test = prev_B(prev_F(inputs_test))
@@ -354,9 +355,15 @@ def train_target(args):
             classifier_loss = CrossEntropyLabelSmooth(num_classes=args.class_num, epsilon=0)(outputs_test, pred)
 
             # 这里计算IM loss
+            # 这里计算的是softmax的输出,对dim=1进行softmax
             softmax_out = nn.Softmax(dim=1)(outputs_test)
+            # 这个entropy计算的是-sum(softmax_out*log(softmax_out),dim=1),得到每个batch的概率之和
+            # 然后再进行一个mean,相当于是计算出来了概率之和相对于每个batch的平均值
+            # 这个im_loss对应论文里面的Lent
             im_loss = torch.mean(Entropy(softmax_out))
+            # msoftmax计算出来了每个类别的概率,batch的平均值,这个对应论文里面的p^k
             msoftmax = softmax_out.mean(dim=0)
+            # 这里的这个-=配合sum里面的负号,就是+=. 这里是求K个的平均值,对应论文里面的Ldiv
             im_loss -= torch.sum(-msoftmax * torch.log(msoftmax + 1e-5))
             # args.par在这里用到了，是权衡IM loss和classifier_loss的超参数
             total_loss = im_loss + args.par * classifier_loss
