@@ -51,13 +51,13 @@ def digit_load(args):
     train_bs = args.batch_size
     if args.dset == 's2m':
         # 意思是源域数据是svhn，目标域数据是mnist
-        train_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='train', download=True,
+        train_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='train', download=False,
                                                  transform=transforms.Compose([
                                                      transforms.Resize(32),
                                                      transforms.ToTensor(),
                                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                                                  ]))
-        test_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='test', download=True,
+        test_source = torchvision.datasets.SVHN('./data/digit/svhn/', split='test', download=False,
                                                 transform=transforms.Compose([
                                                     transforms.Resize(32),
                                                     transforms.ToTensor(),
@@ -393,6 +393,8 @@ def obtain_center(loader, netF, netB, netC, args, c=None):
         for _ in range(len(loader)):
             data = iter_test.next()
             inputs = data[0]
+            # labels的size是[128],经过查看数据可知,这个labels并不是全是0啊,而是有具体数值的.
+            # todo 这里似乎并没有完成说好的unsupervised learning,还需要labels来生成center,不对这个labels是用来计算精度的
             labels = data[1]
             inputs = inputs.cuda()
             feas = netB(netF(inputs))
@@ -403,28 +405,48 @@ def obtain_center(loader, netF, netB, netC, args, c=None):
                 all_label = labels.float()
                 start_test = False
             else:
+                # 这里的代码是将一个个batch的数据堆叠起来.本来feas是[128,256],经过这里的处理之后,all_fea就变为[pic_num,256]
                 all_fea = torch.cat((all_fea, feas.float().cpu()), 0)
                 all_output = torch.cat((all_output, outputs.float().cpu()), 0)
                 all_label = torch.cat((all_label, labels.float()), 0)
+    # 输出之后,all_fea[60000,256] all_output[60000,10] all_labels[60000]
+    # 先进行softmax
     all_output = nn.Softmax(dim=1)(all_output)
-    _, predict = torch.max(all_output, 1)
+
+    _, predict = torch.max(all_output, dim=1)
     accuracy = torch.sum(torch.squeeze(predict).float() == all_label).item() / float(all_label.size()[0])
 
+    # all_fea[60000,256],这个cat操作在all_fea的后面多加了一列1变为[60000,257]
     all_fea = torch.cat((all_fea, torch.ones(all_fea.size(0), 1)), 1)
+    # t()函数是进行转置用的.转置之后all_fea[257,60000]
+    # torch.norm(all_fea, p=2, dim=1)是对dim=1求2范数.得到的输出为[60000]
+    # 然后将其除以范数相当于对60000个样本中的每一个都进行了一个归一化.
     all_fea = (all_fea.t() / torch.norm(all_fea, p=2, dim=1)).t()
     all_fea = all_fea.float().cpu().numpy()
 
+    # k=10,得到种类数目
     K = all_output.size(1)
+    # 这个步骤数据原封不动复制给aff,并且转换为numpy对象.使用shape查看大小
     aff = all_output.float().cpu().numpy()
+    # 矩阵相乘[60000,10]转置之后为[10,60000]然后乘以[60000,257]得到[10,257]
     initc = aff.transpose().dot(all_fea)
+    # aff.sum(axis=0)[:, None]对60000个样本求和,然后转换形式为[10,1]
+    # 最后得到的initc为[10,257]
     initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
 
+    # 输入all_fea[60000,257],initc[10,257],计算出来的dd为[60000,10]
     dd = cdist(all_fea, initc, 'cosine')
+    # 这里其实就是求dim=1的最小值的index,转化为labels,大小为[60000,]
     pred_label = dd.argmin(axis=1)
+
     acc = np.sum(pred_label == all_label.float().numpy()) / len(all_fea)
+
+    # 这里将pred_label大小为[60000,]转化为[60000,10],其中,这个10是[0., 0., 0., 0., 0., 0., 1., 0., 0., 0.]这种形式
     aff = np.eye(K)[pred_label]
     initc = aff.transpose().dot(all_fea)
+    # 最后得到的initc为[10,257]
     initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
+    # 转化为cuda形式,最终大小为[10,257]
     center = torch.from_numpy(initc).cuda()
 
     log_str = 'Accuracy = {:.2f}% -> {:.2f}%'.format(accuracy * 100, acc * 100)
@@ -435,9 +457,13 @@ def obtain_center(loader, netF, netB, netC, args, c=None):
 
 
 def obtain_label(features_target, center):
+    # import pdb
+    # pdb.set_trace()
     features_target = torch.cat((features_target, torch.ones(features_target.size(0), 1).cuda()), 1)
     fea = features_target.float().detach().cpu().numpy()
+    # 这里的fea没有进行torch.norm归一化处理
     center = center.float().detach().cpu().numpy()
+    # 这里还多了一个+1,但是经过测试,这个+1没什么作用
     dis = cdist(fea, center, 'cosine') + 1
     pred = np.argmin(dis, axis=1)
     pred = torch.from_numpy(pred).cuda()
@@ -491,13 +517,13 @@ if __name__ == "__main__":
     # 检测训练好的源域模型是否存在
     if not osp.exists(osp.join(args.output_dir + '/source_F_val.pt')):
         # 输出的log文件为'./seed2020\\s2m\\log_src_val.txt'
-        args.out_file = open(osp.join(args.output_dir, 'log_src_val.txt'), 'w')
+        args.out_file = open(osp.join(args.output_dir, 'log_src_val.txt'), 'a+')
         args.out_file.write(print_args(args) + '\n')
         args.out_file.flush()
         train_source(args)
         test_target(args)
     # 输出的log文件为'./seed2020\\s2m\\log_tar_val_0.1.txt'
-    args.out_file = open(osp.join(args.output_dir, 'log_tar_val_' + str(args.par) + '.txt'), 'w')
+    args.out_file = open(osp.join(args.output_dir, 'log_tar_val_' + str(args.par) + '.txt'), 'a+')
     args.out_file.write(print_args(args) + '\n')
     args.out_file.flush()
     train_target(args)
